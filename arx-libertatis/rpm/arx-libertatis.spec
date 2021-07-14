@@ -1,5 +1,5 @@
 #
-# spec file for package arx-libertatis, arx, arxunpak, arxsavetool and arxcrashreporter
+# spec file for arx-libertatis
 #
 # Copyright (c) 2012-2019 Daniel Scharrer <daniel@constexpr.org>
 #
@@ -19,7 +19,7 @@
 %define __python %{__python3}
 
 Name:           arx-libertatis
-Version:        1.1.2
+Version:        1.2
 Release:        1%{?dist}
 %if 0%{?suse_version}
 License:        GPL-3.0+
@@ -62,43 +62,41 @@ BuildRequires:  xz
 %if 0%{?suse_version}
 BuildRequires:  update-desktop-files
 %endif
+%if 0%{?mageia} != 6 && 0%{?sle_version} != 150300
 BuildRequires:  blender-rpm-macros
 BuildRequires:  blender
+%endif
 Recommends:     arxcrashreporter
+Recommends:     arx-libertatis-tools
 Conflicts:      arxcrashreporter < %{version}
 Conflicts:      arxcrashreporter > %{version}-9999
-Suggests:       arxunpak
-Suggests:       arxsavetool
 Suggests:       innoextract
 %description
 Cross-platform port of Arx Fatalis, a first-person role-playing game.
 This package only includes the game executable - you will also need
 the data files from the original game.
 
-%package -n arxunpak
-Summary:        Tool to extract the Arx Fatalis .pak files containing the game assets
+%package tools
+Summary:        Arx Libertatis tools
 %if 0%{?suse_version}
 Group:          Productivity/Archiving/Compression
 %else
 Group:          Applications/Archiving
 %endif
-%description -n arxunpak
-Tool to extract the .pak files containing the game assets of the original Arx Fatalis.
+Provides:       arxsavetool = %{version}
+Provides:       arxunpak = %{version}
+Conflicts:      arxsavetool < %{version}
+Conflicts:      arxunpak < %{version}
+Obsoletes:      arxsavetool < %{version}
+Obsoletes:      arxunpak < %{version}
+%description tools
+Tools to work with Arx Fatalis data:
+
+arxsavetool can inspect and extract .sav files containing saved game states.
+
+arxunpak can extract the .pak files containing the game assets of the original Arx Fatalis.
 
 This is not required to run Arx Libertatis but can be useful for development.
-
-%package -n arxsavetool
-Summary:        Tool to inspect and modify Arx Libertatis save files
-%if 0%{?suse_version}
-Group:          Development/Tools/Other
-%else
-Group:          Development/Tools
-%endif
-%description -n arxsavetool
-Tool to inspect and modify Arx Libertatis save files. Allows to extract
-individual files from save file containers and re-pack them. Also allows
-listing the information contained in save files and fixing some errors caused
-by broken versions of the game.
 
 %package -n arxcrashreporter
 Summary:        Arx Libertatis crash reporter
@@ -133,6 +131,7 @@ Requires:       libArxIO0 = %{version}-%{release}
 %description -n libArxIO-devel
 Arx Fatalis compression helper library used by the Blender addon (development files).
 
+%if 0%{?mageia} != 6 && 0%{?sle_version} != 150300
 %package -n arx-blender-addon
 Summary:        Arx Libertatis Blender addon
 %if 0%{?suse_version}
@@ -146,6 +145,7 @@ Enhances:       blender
 BuildArch:      noarch
 %description -n arx-blender-addon
 Blender addon to edit Arx Fatalis data files.
+%endif
 
 %prep
 %setup -q
@@ -165,14 +165,25 @@ rm bin/innoextract
 rm license/innoextract.*
 rm bin/bsdtar
 rm license/libarchive.*
+rm bin/arxsavetool
+rm bin/arxunpak
 rm data/README
 <? else: ?>
+%if 0%{?mageia} != 6 && 0%{?sle_version} != 150300
 %cmake \
 	-DCMAKE_INSTALL_LIBEXECDIR="%{_libexecdir}" \
 	-DINSTALL_BLENDER_PLUGINDIR="%{blender_addons}/arx" \
 	-DINSTALL_DATADIR="%{_datadir}/arx" \
 	-DRUNTIME_DATADIR=""
-%if 0%{?sle_version} >= 150100 || 0%{?mageia} >= 8
+%else
+%cmake \
+	-DCMAKE_INSTALL_LIBEXECDIR="%{_libexecdir}" \
+	-DINSTALL_BLENDER_PLUGIN=OFF \
+	-DBUILD_IO_LIBRARY=ON \
+	-DINSTALL_DATADIR="%{_datadir}/arx" \
+	-DRUNTIME_DATADIR=""
+%endif
+%if 0%{?sle_version} >= 150100 || 0%{?mageia} >= 8 || 0%{?fedora_version} >= 33
 %cmake_build
 %else
 %if 0%{?suse_version}
@@ -190,14 +201,17 @@ install -d "%{buildroot}/%{_libdir}"
 mv bin/libArxIO.so* "%{buildroot}/%{_libdir}/"
 install -d "%{buildroot}/%{_includedir}"
 mv bin/ArxIO.h "%{buildroot}/%{_includedir}/"
+%if 0%{?mageia} != 6 && 0%{?sle_version} != 150300
 install -d "%{buildroot}/%{blender_addons}"
 mv plugins/blender/arx_addon "%{buildroot}/%{blender_addons}/arx"
+%endif
 # tools
 install -d "%{buildroot}/%{_bindir}"
-mv bin/arxunpak "%{buildroot}/%{_bindir}/"
-mv bin/arxsavetool "%{buildroot}/%{_bindir}/"
+ln -rs "%{buildroot}/%{_libexecdir}/arxtool" "%{buildroot}/%{_bindir}/arxunpak"
+ln -rs "%{buildroot}/%{_libexecdir}/arxtool" "%{buildroot}/%{_bindir}/arxsavetool"
 mv bin/arx-install-data "%{buildroot}/%{_bindir}/"
 install -d "%{buildroot}/%{_libexecdir}"
+mv bin/arxtool "%{buildroot}/%{_libexecdir}/"
 mv bin/arxcrashreporter "%{buildroot}/%{_libexecdir}/"
 # main binary and support libraries
 install -d "%{buildroot}/%{_libexecdir}/arx"
@@ -225,7 +239,7 @@ mv arx-libertatis.png "%{buildroot}/%{_datadir}/icons/hicolor/128x128/apps/arx-l
 install -d "%{buildroot}/%{_datadir}/applications"
 mv arx-libertatis.desktop "%{buildroot}/%{_datadir}/applications/"
 <? else: ?>
-%if 0%{?suse_version} || 0%{?mageia} >= 8
+%if 0%{?suse_version} || 0%{?mageia} >= 8 || 0%{?fedora_version} >= 33
 %cmake_install
 %else
 %if 0%{?mageia}
@@ -265,15 +279,13 @@ mv arx-libertatis.desktop "%{buildroot}/%{_datadir}/applications/"
 %{_libexecdir}/arx/libopenal.so.*
 <? endif ?>
 
-%files -n arxunpak
+%files tools
 %defattr(-,root,root)
 %{_bindir}/arxunpak
-%{_mandir}/man1/arxunpak.1*
-
-%files -n arxsavetool
-%defattr(-,root,root)
 %{_bindir}/arxsavetool
+%{_mandir}/man1/arxunpak.1*
 %{_mandir}/man1/arxsavetool.1*
+%{_libexecdir}/arxtool
 
 %files -n arxcrashreporter
 %defattr(-,root,root)
@@ -288,10 +300,12 @@ mv arx-libertatis.desktop "%{buildroot}/%{_datadir}/applications/"
 %{_includedir}/ArxIO.h
 %{_libdir}/libArxIO.so
 
+%if 0%{?mageia} != 6 && 0%{?sle_version} != 150300
 %files -n arx-blender-addon
 %defattr(-,root,root)
 %dir %{blender_addons}
 %{blender_addons}
+%endif
 
 %post
 %desktop_database_post
@@ -307,6 +321,10 @@ echo "See https://arx.vg/data for more information."
 %postun -n libArxIO0 -p /sbin/ldconfig
 
 %changelog
+* Wed Jul 14 2021 Daniel Scharrer <daniel@constexpr.org> - 1.2-1
+- Bump version to 1.2 (new upstream release):
+- This release brings improved rune recognition when casting spells, as well as a new bow aim mode. Support for high resolutions and wide monitors is enhanced with configurable HUD and player book scaling. The text and audio language can now be changed in the menu. Further, item physics have been fixed and item dragging has been refined. On top of that, this release adds a console to execute arbitrary script commands.
+
 * Thu Oct 17 2013 Daniel Scharrer <daniel@constexpr.org> - 1.1.2-1
 - Bump version to 1.1.2 (new upstream release):
 - Fixed a crash when hovering over map markers after the window was resized

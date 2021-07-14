@@ -29,7 +29,7 @@ fi
 if [ -z "${is_release_candidate:-}" ] ; then
 	is_release_candidate=0
 	if [ $is_snapshot = 1 ] && [ ! -z "${version:-}" ] ; then
-		[[ "${version}" =~ ^.*\.[0-9]+rc[0-9]+$ ]] && is_release_candidate=1
+		[[ "${version}" =~ ^.*\.[0-9]+-rc[0-9]+$ ]] && is_release_candidate=1
 	fi
 fi
 
@@ -69,6 +69,7 @@ declare -A archives=(
 	['linux-debug-build']='-linux-debug.tar.xz'
 	['windows-debug-build']='-windows-debug.tar.xz'
 	['freebsd-debug-build']='-freebsd-debug.tar.xz'
+	['nsis-package']='-windows.exe'
 	['deb-prepare']='-source.deb'
 )
 
@@ -133,6 +134,7 @@ c_flags=(
 	
 	# Enable optimization
 	-O3
+	--param max-gcse-memory=2000000000
 	
 )
 c_flags_msvc=(
